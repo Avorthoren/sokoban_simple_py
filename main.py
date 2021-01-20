@@ -47,7 +47,7 @@ if __name__ == "__main__":
 		Cell.empty(), Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
 		Cell.empty(), Cell.box(),   Cell.runner(), Cell.box(),   Cell.empty(),
 		Cell.goal(),  Cell.box(),   Cell.box(),    Cell.box(),   Cell.goal(),
-		Cell.empty(),  Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
+		Cell.empty(), Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
 	])
 
 	field.show()
