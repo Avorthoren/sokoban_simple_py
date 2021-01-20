@@ -115,9 +115,10 @@ class MoveDir(Enum):
 
 
 class Move:
-	def __init__(self, type_, dir_):
+	def __init__(self, type_, dir_, savedDeadBoxes=None):
 		self.type_ = type_
 		self.dir_ = dir_
+		self.savedDeadBoxes = savedDeadBoxes
 
 
 class Field:
@@ -220,7 +221,7 @@ class Field:
 
 		return y * self.n + x
 
-	def _undoMove(self, move):
+	def _undoMove(self, move, deadBoxes):
 		prevCellIndex = self.getTargetCellIndex(self._runnerPos, MoveDir.getOpposite(move.dir_))
 		self._cells[prevCellIndex].state = CellState.RUNNER
 
@@ -236,6 +237,8 @@ class Field:
 			self._cells[self._runnerPos].state = CellState.EMPTY
 
 		self._runnerPos = prevCellIndex
+
+		return deadBoxes if move.savedDeadBoxes is None else move.savedDeadBoxes
 
 	@staticmethod
 	def _cellIsBlocked(blockedNeighbours):
@@ -352,7 +355,7 @@ class Field:
 
 		# Start solving
 		moveCounter = 0
-		logCouner = 0
+		logCounter = 0
 		while True:
 			if self._unachievedGoals:
 				# Try move.
@@ -384,7 +387,7 @@ class Field:
 
 						self._runnerPos = targetCellIndex
 
-						# We should not repeat field state unless we've achived
+						# We should not repeat field state unless we've achieved
 						# it from lower distance than previous time.
 						# TODO: optimal solution search must be reworked:
 						#  all fields fingerprints from previous found solution
@@ -398,21 +401,25 @@ class Field:
 							and checkedFields[fingerPrint] > len(moves) + 1
 						):
 							checkedFields[fingerPrint] = len(moves)
-							if not (move.type_ == MoveType.PUSH and self.isDead(deadBoxes)):
+							isDead = False
+							if move.type_ == MoveType.PUSH:
+								move.savedDeadBoxes = deadBoxes.copy()
+								isDead = self.isDead(deadBoxes)
+
+							if not isDead:
 								moves.append(move)
 								nextDir = MoveDir.DEFAULT
 
 								moveCounter += 1
-								logCouner += 1
-								if logInterval is not None and logCouner == logInterval:
-									logCouner = 0
+								logCounter += 1
+								if logInterval is not None and logCounter == logInterval:
+									logCounter = 0
 									print(f"{moveCounter}: {self._getMovesRepr(moves)}")
 
 								continue
 
 						# Else: undo move
-						self._undoMove(move)
-						deadBoxes = set()
+						deadBoxes = self._undoMove(move, deadBoxes)
 
 			else:
 				# Success!
@@ -427,10 +434,9 @@ class Field:
 					return
 
 				lastMove = moves.pop()
-				self._undoMove(lastMove)
+				deadBoxes = self._undoMove(lastMove, deadBoxes)
 				lastMove = moves.pop()
-				self._undoMove(lastMove)
-				deadBoxes = set()
+				deadBoxes = self._undoMove(lastMove, deadBoxes)
 				nextDir = lastMove.dir_
 
 			# Find next dir
@@ -441,8 +447,7 @@ class Field:
 
 				# Undo move
 				lastMove = moves.pop()
-				self._undoMove(lastMove)
-				deadBoxes = set()
+				deadBoxes = self._undoMove(lastMove, deadBoxes)
 				nextDir = MoveDir.getNext(lastMove.dir_)
 
 	def showSolution(self, delay=1.0):
@@ -539,7 +544,7 @@ if __name__ == "__main__":
 		Cell.empty(), Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
 		Cell.empty(), Cell.box(),   Cell.runner(), Cell.box(),   Cell.empty(),
 		Cell.goal(),  Cell.box(),   Cell.box(),    Cell.box(),   Cell.goal(),
-		Cell.goal(),  Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.goal()
+		Cell.empty(),  Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
 	])
 
 	field.show()
