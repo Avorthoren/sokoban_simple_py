@@ -37,6 +37,9 @@ class MoveDir(Enum):
 		else:
 			return cls.UP
 
+	def __str__(self):
+		return self.name[0]
+
 
 class Move:
 	def __init__(self, type_, dir_, savedDeadBoxes=None):
@@ -45,10 +48,28 @@ class Move:
 		self.savedDeadBoxes = savedDeadBoxes
 
 	def __str__(self):
-		return self.dir_.name[0] if self.type_ == MoveType.PUSH else self.dir_.name[0].lower()
+		symbol = str(self.dir_)
+		return symbol if self.type_ == MoveType.PUSH else symbol.lower()
 
 
 class BoxMove:
 	def __init__(self, startCellIndex, dir_):
 		self.startCellIndex = startCellIndex
 		self.dir_ = dir_
+
+	def __eq__(self, other):
+		return self.startCellIndex == other.startCellIndex and self.dir_ == other.dir_
+
+	def __hash__(self):
+		print(len(MoveDir), self.dir_.value, self.startCellIndex)
+		return len(MoveDir) * self.dir_.value + self.startCellIndex
+
+	def __str__(self):
+		return f"{self.startCellIndex}{self.dir_}"
+
+	__repr__ = __str__
+
+
+if __name__ == "__main__":
+	bm = BoxMove(0, MoveDir.DEFAULT)
+	print(bm.__sizeof__())

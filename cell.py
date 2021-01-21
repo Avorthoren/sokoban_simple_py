@@ -23,7 +23,7 @@ class Cell:
 		self.type_ = type_
 		self.state = state
 
-	def getFingerprint(self):
+	def __hash__(self):
 		if self.type_ == CellType.WALL:
 			return 1
 		elif self.state == CellState.EMPTY:
@@ -34,6 +34,18 @@ class Cell:
 			return 7 if self.type_ == CellType.GOAL else 6
 		else:
 			return 0
+
+	def __copy__(self):
+		cls = self.__class__
+		copy_ = cls.__new__(cls)
+
+		copy_.type_ = self.type_
+		copy_.state = self.state
+
+		return copy_
+
+	def copy(self):
+		return self.__copy__()
 
 	def isPassable(self):
 		return self.type_ != CellType.WALL and self.state != CellState.BOX
@@ -77,3 +89,11 @@ class Cell:
 			return "R" if self.type_ == CellType.GOAL else "r"
 		else:
 			return "?"
+
+
+if __name__ == "__main__":
+	c1 = Cell(CellType.GOAL, CellState.EMPTY)
+	c2 = c1.copy()
+	c1.state = CellState.BOX
+	print(c1, c2)
+

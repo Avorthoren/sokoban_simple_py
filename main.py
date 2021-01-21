@@ -57,7 +57,7 @@ if __name__ == "__main__":
 	print("Processing, wait...")
 
 	t0 = time.time()
-	if field.solve(logInterval=100000):
+	if field.solve(logInterval=10000):
 		print()
 		print(f"Checked in {time.time() - t0:.2f} seconds")
 		print(f"Solution with {field.getTotalWinMoves()} total moves found. Show? y/n")

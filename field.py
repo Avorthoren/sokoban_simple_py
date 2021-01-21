@@ -1,36 +1,72 @@
 # -*- coding: utf-8 -*-
 """
-Состояние поля хешируем не считая бегуна + компоненту связности бегуна.
+fp - fingerprint
+
+fp вычисляем как hash(упорядоченный список индексов клеток всех ящиков + индекс
+компоненты связности бегуна).
+
+Создаём словарь бегунов {int - id: Field}. Помещаем туда первого с rawCopy
+исходного поля. Вычисляем fp, список доступных ходов и список мёртвых ящиков.
+Если поле мёртвое => конец.
+
 Храним словарь посещённых состояний:
-{int - hash: BoxMove | None - ход, который привёл к этому состоянию}
-Вначале там {hash(стартовое состояние): None}
+{int - fp: BoxMove | None - ход, который привёл к этому состоянию}
+Вначале там {fp(стартовое состояние): None}
 
-Создаём словарь бегунов {int - id: RunnerData}. Помещаем туда первого.
-RunnerData:
-{"field": Field
-}
+Условие 0:
+Перед выполнением хода нужно убедиться, что либо конечная клетка ящика - цель,
+либо не мёртвая, либо unachievedGoals <= totalBoxes - (totalDeadBoxes + 1).
+Для этого нужно иметь множество мёртвых клеток (общее для всех и постоянное).
 
-ПОИСК_PUSH_МАРШРУТА:
-Итерация:
-	Итерация по бегунам (for runnerID in tuple(runners): ...)
-		Проверяем, на месте ли мы. Если да - ПОСТРОЕНИЕ_MOVE_МАРШРУТА.
+После выполнения хода нужно проверить:
+1. Не посещено ли это поле. Для этого нужно иметь словарь компонент связности:
+   {int - cell index: int - component index}, во время вычисления которой мы
+   также вычислим все возможные PUSH ходы, оставив только те из них, которые
+   принадлежат компоненте связности бегуна.
+2. Не является ли поле мёртвым. Для этого нужно иметь множество мёртвых ящиков,
+   которое, возможно, обновится при анализе.
 
-		Иначе, поиском в ширину находим все возможные PUSH ходы.
-	
-	
-	
+ПОИСК_PUSH_МАРШРУТА (_solve):
+	Итерация пока есть бегуны:
+		Итерация по бегунам (for runnerID in tuple(runners): ...):
+			Если unachievedGoals == 0:
+				return runners[runnerID]._fingerPrint
 
-Тут можно удалить словарь бегунов.
+			deleteRunnerID = runnerID
+			Итерация по возможным PUSH ходам:
+				Если ход не удовлетвоярет условию 0:
+					continue
+				Если это не последний ход и список мёртвых ящиков ещё не сохранён:
+					Сохраняем список мёртвых ящиков
+				Делаем ход
+				Если ход не удовлетворяет условию 1:
+					Отменить ход
+					continue
+				Помещаем поле в словарь посещённых
+				Если ход не удовлетворяет условию 2:
+					Отменить ход
+					continue
+				deleteRunnerID = None
+				Если это не последний ход:
+					Добавить нового бегуна, сделав rawCopy поля последнего и
+					установив туда сохранённый список мёртвых ящиков.
+					runnerID = next(runnerIDGenerator)
+					deleteRunnerID = runnerID
 
-ПОСТРОЕНИЕ_MOVE_МАРШРУТА:
-Построить список PUSH ходов в обратном порядке, последовательно делая PUSH ход
-обратный последнему из текущего состояния, пока не прийдём к состояния с
-последним ходом None. При этом, нам не важны положения бегуна.
-Из исходного состояния поля итерируем по PUSH ходам. Для каждого PUSH хода
-ищем список MOVE ходов поиском в ширину. Готово: вы великолепны.
+			Удалить бегуна deleteRunner, если он не None
+
+	return None
+
+
+ПОСТРОЕНИЕ_MOVE_МАРШРУТА (_findWinMoves):
+	Построить список PUSH ходов в обратном порядке, последовательно делая PUSH
+	ход обратный последнему из текущего состояния, пока не прийдём к состояния
+	с последним ходом None. При этом, нам не важны положения бегуна.
+	Из исходного состояния поля итерируем по PUSH ходам. Для каждого PUSH хода
+	ищем список MOVE ходов поиском в ширину. Готово: вы великолепны.
 """
 
-
+import copy
 import os
 import time
 
@@ -54,9 +90,10 @@ class Field:
 		self._cells = cells
 		self._n = n
 		self._m = len(cells) // n
-		self._totalGoals = 0
 		self._unachievedGoals = 0
 		self._totalBoxes = 0
+
+		totalGoals = 0
 		hasRunner = False
 		for i, cell in enumerate(cells):
 			if cell.state == CellState.RUNNER:
@@ -68,15 +105,23 @@ class Field:
 				self._totalBoxes += 1
 
 			if cell.type_ == CellType.GOAL:
-				self._totalGoals += 1
+				totalGoals += 1
 				if cell.state != CellState.BOX:
 					self._unachievedGoals += 1
 
 		if not hasRunner:
 			raise ValueError("Field must have runner")
 
+		if totalGoals > self._totalBoxes:
+			raise ValueError(f"Number of total goals must be at most number of total boxes")
+
+		self._fingerprint = None
 		self._winMoves = None
 		self._solvable = None
+		self._runnerComponentIndex = None
+		self._boxMoves = None
+		self._deadBoxes = None
+		self._totalStatesChecked = 0
 
 	@property
 	def n(self):
@@ -90,12 +135,32 @@ class Field:
 	def solvable(self):
 		return self._solvable
 
-	def getFingerprint(self):
+	def _rawCopy(self):
+		cls = self.__class__
+		copy_ = cls.__new__(cls)
+
+		copy_._cells = tuple(cell.copy() for cell in self._cells)
+		copy_._n = self._n
+		copy_._m = self._m
+		copy_._unachievedGoals = self._unachievedGoals
+		copy_._totalBoxes = self._totalBoxes
+		copy_._runnerPos = self._runnerPos
+		copy_._fingerprint = None
+		copy_._winMoves = None
+		copy_._solvable = None
+		copy_._runnerComponentIndex = None
+		copy_._boxMoves = None
+		copy_._deadBoxes = None
+		copy_._totalStatesChecked = 0
+
+		return copy_
+
+	def __hash__(self):
 		totalCells = len(self._cells)
 
 		# n and all cells fully describe field.
 		return hash(tuple(
-			self._cells[i].getFingerprint() if i < totalCells else self.n
+			hash(self._cells[i]) if i < totalCells else self.n
 			for i in range(totalCells + 1)
 		))
 
@@ -139,6 +204,7 @@ class Field:
 
 		return y * self.n + x
 
+	# TODO: REWORK
 	def _undoMove(self, move, deadBoxes):
 		prevCellIndex = self.getTargetCellIndex(self._runnerPos, MoveDir.getOpposite(move.dir_))
 		self._cells[prevCellIndex].state = CellState.RUNNER
@@ -228,23 +294,29 @@ class Field:
 			)
 		print(sep.join(self.BORDER_SYMBOL for _ in range(n+2)))
 
-	def solve(self, optimal=False, logInterval=None):
-		if self._totalGoals > self._totalBoxes:
-			self._solvable = False
-		else:
-			cells = [Cell(cell.type_, cell.state) for cell in self._cells]
-			runnerPos = self._runnerPos
-			unachievedGoals = self._unachievedGoals
+	def _analyze(self):
+		pass
 
-			self._solve(optimal, logInterval)
+	def solve(self, logInterval=None):
+		# Подготовить rawCopy, сделать analyze, updateDeadBoxes, проверить,
+		# не является ли поле мёртвым, создать словарь посещённых состояний.
 
-			self._cells = cells
-			self._runnerPos = runnerPos
-			self._unachievedGoals = unachievedGoals
+		startField = self._rawCopy()
+
+
+		# Запустить _solve, передав туда поле и словарь посещённых.
+		# Возвращаем fp конечного поля
+
+		# Запустить _findWinMoves, передав туда словарь посещённых состояний
+		# и fp конечного поля.
+
+		self._solve(logInterval)
+
+
 
 		return self.solvable
 
-	def _solve(self, optimal, logInterval):
+	def _solve(self, logInterval):
 		self._solvable = False
 		# Field fingerprint to distance from initial field state relation.
 		checkedFields = {self.getFingerprint(): 0}
@@ -315,8 +387,7 @@ class Field:
 						fingerPrint = self.getFingerprint()
 						if (
 							fingerPrint not in checkedFields
-							or optimal
-							and checkedFields[fingerPrint] > len(moves) + 1
+							or checkedFields[fingerPrint] > len(moves) + 1
 						):
 							checkedFields[fingerPrint] = len(moves)
 							isDead = False
