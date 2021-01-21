@@ -46,3 +46,9 @@ class Move:
 
 	def __str__(self):
 		return self.dir_.name[0] if self.type_ == MoveType.PUSH else self.dir_.name[0].lower()
+
+
+class BoxMove:
+	def __init__(self, startCellIndex, dir_):
+		self.startCellIndex = startCellIndex
+		self.dir_ = dir_
