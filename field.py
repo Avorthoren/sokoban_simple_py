@@ -118,9 +118,9 @@ class Field:
 		self._fingerprint = None
 		self._winMoves = None
 		self._solvable = None
-		self._runnerComponentIndex = None
+		self._runnerComponentID = None
 		self._boxMoves = None
-		self._deadBoxes = None
+		self._deadBoxes = set()
 		self._totalStatesChecked = 0
 
 	@property
@@ -148,21 +148,33 @@ class Field:
 		copy_._fingerprint = None
 		copy_._winMoves = None
 		copy_._solvable = None
-		copy_._runnerComponentIndex = None
+		copy_._runnerComponentID = None
 		copy_._boxMoves = None
-		copy_._deadBoxes = None
+		copy_._deadBoxes = set()
 		copy_._totalStatesChecked = 0
 
 		return copy_
 
-	def __hash__(self):
-		totalCells = len(self._cells)
+	def _fingerprintGen(self):
+		for i, cell in enumerate(self._cells):
+			if cell.state == CellState.BOX:
+				yield i
 
-		# n and all cells fully describe field.
-		return hash(tuple(
-			hash(self._cells[i]) if i < totalCells else self.n
-			for i in range(totalCells + 1)
-		))
+		yield self._runnerComponentID
+
+	def _getFingerprint(self):
+		# All box positions and runner connectivity component
+		return hash(tuple(val for val in self._fingerprintGen()))
+
+	def _hashGen(self):
+		for cell in self._cells:
+			yield hash(cell)
+
+		yield self._n
+
+	def __hash__(self):
+		# n and all cells fully describe field
+		return hash(tuple(val for val in self._hashGen()))
 
 	def show(self, tab="", sep=" ", end="\n"):
 		n = self.n
@@ -295,149 +307,225 @@ class Field:
 		print(sep.join(self.BORDER_SYMBOL for _ in range(n+2)))
 
 	def _analyze(self):
-		pass
+		"""Find runner component index, fingerprint and all possible box moves."""
+		# Map of passable cells that were already checked
+		checkedCells = {}
+		componentIDGen = utils.idGenerator()
+		# These are different runners, not the ones used in _solve
+		runners = {}
+		runnerIDGen = utils.idGenerator()
+		# Map of possible box moves for each component
+		boxMoves = {}
 
-	def solve(self, logInterval=None):
-		# Подготовить rawCopy, сделать analyze, updateDeadBoxes, проверить,
-		# не является ли поле мёртвым, создать словарь посещённых состояний.
-
-		startField = self._rawCopy()
-
-
-		# Запустить _solve, передав туда поле и словарь посещённых.
-		# Возвращаем fp конечного поля
-
-		# Запустить _findWinMoves, передав туда словарь посещённых состояний
-		# и fp конечного поля.
-
-		self._solve(logInterval)
-
-
-
-		return self.solvable
-
-	def _solve(self, logInterval):
-		self._solvable = False
-		# Field fingerprint to distance from initial field state relation.
-		checkedFields = {self.getFingerprint(): 0}
-		# Box is considered to be dead if it can not be moved in future.
-		deadBoxes = set()
-		if self.isDead(deadBoxes):
-			return
-
-		moves = []
-		nextDir = MoveDir.DEFAULT
-
-		# Prepare set of cell indices to which it makes no sense to move the box
-		deadCells = set()
 		for i, cell in enumerate(self._cells):
-			# Dead cell is REGULAR cell that have > 2 WALL neighbours or 2
-			# adjacent WALL neighbours (where border must be treated as WALL)
-			if cell.type_ == CellType.REGULAR:
-				wallNeighbours = set()
-				for moveDir in MoveDir:
-					targetCellIndex = self.getTargetCellIndex(i, moveDir)
-					if targetCellIndex is None or self._cells[targetCellIndex].type_ == CellType.WALL:
-						wallNeighbours.add(moveDir)
+			if self._runnerComponentID is not None:
+				break
 
-				if self._cellIsBlocked(wallNeighbours):
-					deadCells.add(i)
+			if cell.isPassable() and i not in checkedCells:
+				# This will be new connectivity component
+				componentID = next(componentIDGen)
+				checkedCells[i] = componentID
+				runners[next(runnerIDGen)] = i
+				boxMoves[componentID] = []
 
-		# Start solving
-		moveCounter = 0
-		logCounter = 0
-		while True:
-			if self._unachievedGoals:
-				# Try move.
-				targetCellIndex = self.getTargetCellIndex(self._runnerPos, nextDir)
-				# Not edge of the field
-				if targetCellIndex is not None:
-					targetCell = self._cells[targetCellIndex]
-					isPassable = targetCell.isPassable()
-					followCellIndex = self.getTargetCellIndex(targetCellIndex, nextDir)
-					# Either passable cell, or box followed by passable cell
-					# and non-dead cell
-					if (
-						isPassable
-						or targetCell.state == CellState.BOX
-						and followCellIndex is not None
-						and self._cells[followCellIndex].isPassable()
-						and followCellIndex not in deadCells
-					):
-						# Do move
-						move = Move(MoveType.REGULAR if isPassable else MoveType.PUSH, nextDir)
-						targetCell.state = CellState.RUNNER
-						self._cells[self._runnerPos].state = CellState.EMPTY
-						if not isPassable:
-							self._cells[followCellIndex].state = CellState.BOX
-							if targetCell.type_ == CellType.GOAL:
-								self._unachievedGoals += 1
-							if self._cells[followCellIndex].type_ == CellType.GOAL:
-								self._unachievedGoals -= 1
+				while runners:
+					for runnerID in tuple(runners):
+						runnerPos = runners[runnerID]
+						runnerNotMoved = True
+						# Move-runner aligned with push-runner
+						if runnerPos == self._runnerPos:
+							self._runnerComponentID = componentID
 
-						self._runnerPos = targetCellIndex
-
-						# We should not repeat field state unless we've achieved
-						# it from lower distance than previous time.
-						# TODO: optimal solution search must be reworked:
-						#  all fields fingerprints from previous found solution
-						#  should be stored somewhere. If we hit some of this
-						#  fields, _winMoves must be updated, then undo two
-						#  last moves.
-						fingerPrint = self.getFingerprint()
-						if (
-							fingerPrint not in checkedFields
-							or checkedFields[fingerPrint] > len(moves) + 1
-						):
-							checkedFields[fingerPrint] = len(moves)
-							isDead = False
-							if move.type_ == MoveType.PUSH:
-								move.savedDeadBoxes = deadBoxes.copy()
-								isDead = self.isDead(deadBoxes)
-
-							if not isDead:
-								moves.append(move)
-								nextDir = MoveDir.DEFAULT
-
-								moveCounter += 1
-								logCounter += 1
-								if logInterval is not None and logCounter == logInterval:
-									logCounter = 0
-									print(f"{moveCounter}: {self._getMovesRepr(moves)}")
-
+						for moveDir in MoveDir:
+							targetCellIndex = self.getTargetCellIndex(runnerPos, moveDir)
+							if targetCellIndex is None:
 								continue
 
-						# Else: undo move
-						deadBoxes = self._undoMove(move, deadBoxes)
+							targetCell = self._cells[targetCellIndex]
+							if targetCell.isPassable() and targetCellIndex not in checkedCells:
+								# Mark cell as checked and move further
+								checkedCells[targetCellIndex] = componentID
+								if runnerNotMoved:
+									runnerNotMoved = False
+									runners[runnerID] = targetCellIndex
+								else:
+									runners[next(runnerIDGen)] = targetCellIndex
 
-			else:
-				# Success!
-				self._winMoves = tuple(Move(move.type_, move.dir_) for move in moves)
-				self._solvable = True
+							elif targetCell.state == CellState.BOX:
+								# Update available box moves
+								followCellIndex = self.getTargetCellIndex(targetCellIndex, moveDir)
+								if followCellIndex is None:
+									continue
 
-				if not optimal:
-					return
+								followCell = self._cells[followCellIndex]
+								if followCell.isPassable():
+									boxMoves[componentID].append(BoxMove(targetCellIndex, moveDir))
 
-				# There is no sense to undo only one move, at least two
-				if len(moves) < 2:
-					return
+						if runnerNotMoved:
+							del runners[runnerID]
 
-				lastMove = moves.pop()
-				deadBoxes = self._undoMove(lastMove, deadBoxes)
-				lastMove = moves.pop()
-				deadBoxes = self._undoMove(lastMove, deadBoxes)
-				nextDir = lastMove.dir_
+		if self._runnerComponentID is None:
+			# This should never happen
+			raise RuntimeError("Push-runner not found in any connectivity component")
 
-			# Find next dir
-			nextDir = MoveDir.getNext(nextDir)
-			while nextDir is None:
-				if not len(moves):
-					return
+		self._fingerprint = self._getFingerprint()
 
-				# Undo move
-				lastMove = moves.pop()
-				deadBoxes = self._undoMove(lastMove, deadBoxes)
-				nextDir = MoveDir.getNext(lastMove.dir_)
+		print("Checked fields: ", checkedCells)
+		print("Box moves: ", boxMoves)
+		print("Runner component: ", self._runnerComponentID)
+		print("Fingerprint: ", self._fingerprint)
+
+		self._boxMoves = boxMoves[self._runnerComponentID]
+
+	# def solve(self, logInterval=None):
+	# 	if self._solvable is None:
+	# 		self._solvable = False
+	# 	else:
+	# 		return self._solvable
+	#
+	# 	startField = self._rawCopy()
+	# 	startField._analyze()
+	# 	checkedFields = {startField._fingerprint: None}
+	# 	if startField.isDead():
+	# 		return self._solvable  # False
+	#
+	# 	endFieldFingerPrint = self._solve(checkedFields, logInterval)
+	# 	if endFieldFingerPrint is None:
+	# 		return self._solvable
+	#
+	# 	self._solvable = True  # False
+	#
+	# 	# Запустить _findWinMoves, передав туда словарь посещённых состояний
+	# 	# и fp конечного поля.
+	# 	self._findWinMoves(checkedFields, endFieldFingerPrint)
+	#
+	# 	return self._solvable  # True
+	#
+	# def _solve(self, logInterval):
+	# 	self._solvable = False
+	# 	# Field fingerprint to distance from initial field state relation.
+	# 	checkedFields = {self.getFingerprint(): 0}
+	# 	# Box is considered to be dead if it can not be moved in future.
+	# 	deadBoxes = set()
+	# 	if self.isDead(deadBoxes):
+	# 		return
+	#
+	# 	moves = []
+	# 	nextDir = MoveDir.DEFAULT
+	#
+	# 	# Prepare set of cell indices to which it makes no sense to move the box
+	# 	deadCells = set()
+	# 	for i, cell in enumerate(self._cells):
+	# 		# Dead cell is REGULAR cell that have > 2 WALL neighbours or 2
+	# 		# adjacent WALL neighbours (where border must be treated as WALL)
+	# 		if cell.type_ == CellType.REGULAR:
+	# 			wallNeighbours = set()
+	# 			for moveDir in MoveDir:
+	# 				targetCellIndex = self.getTargetCellIndex(i, moveDir)
+	# 				if targetCellIndex is None or self._cells[targetCellIndex].type_ == CellType.WALL:
+	# 					wallNeighbours.add(moveDir)
+	#
+	# 			if self._cellIsBlocked(wallNeighbours):
+	# 				deadCells.add(i)
+	#
+	# 	# Start solving
+	# 	moveCounter = 0
+	# 	logCounter = 0
+	# 	while True:
+	# 		if self._unachievedGoals:
+	# 			# Try move.
+	# 			targetCellIndex = self.getTargetCellIndex(self._runnerPos, nextDir)
+	# 			# Not edge of the field
+	# 			if targetCellIndex is not None:
+	# 				targetCell = self._cells[targetCellIndex]
+	# 				isPassable = targetCell.isPassable()
+	# 				followCellIndex = self.getTargetCellIndex(targetCellIndex, nextDir)
+	# 				# Either passable cell, or box followed by passable cell
+	# 				# and non-dead cell
+	# 				if (
+	# 					isPassable
+	# 					or targetCell.state == CellState.BOX
+	# 					and followCellIndex is not None
+	# 					and self._cells[followCellIndex].isPassable()
+	# 					and followCellIndex not in deadCells
+	# 				):
+	# 					# Do move
+	# 					move = Move(MoveType.REGULAR if isPassable else MoveType.PUSH, nextDir)
+	# 					targetCell.state = CellState.RUNNER
+	# 					self._cells[self._runnerPos].state = CellState.EMPTY
+	# 					if not isPassable:
+	# 						self._cells[followCellIndex].state = CellState.BOX
+	# 						if targetCell.type_ == CellType.GOAL:
+	# 							self._unachievedGoals += 1
+	# 						if self._cells[followCellIndex].type_ == CellType.GOAL:
+	# 							self._unachievedGoals -= 1
+	#
+	# 					self._runnerPos = targetCellIndex
+	#
+	# 					# We should not repeat field state unless we've achieved
+	# 					# it from lower distance than previous time.
+	# 					# TODO: optimal solution search must be reworked:
+	# 					#  all fields fingerprints from previous found solution
+	# 					#  should be stored somewhere. If we hit some of this
+	# 					#  fields, _winMoves must be updated, then undo two
+	# 					#  last moves.
+	# 					fingerPrint = self.getFingerprint()
+	# 					if (
+	# 						fingerPrint not in checkedFields
+	# 						or checkedFields[fingerPrint] > len(moves) + 1
+	# 					):
+	# 						checkedFields[fingerPrint] = len(moves)
+	# 						isDead = False
+	# 						if move.type_ == MoveType.PUSH:
+	# 							move.savedDeadBoxes = deadBoxes.copy()
+	# 							isDead = self.isDead(deadBoxes)
+	#
+	# 						if not isDead:
+	# 							moves.append(move)
+	# 							nextDir = MoveDir.DEFAULT
+	#
+	# 							moveCounter += 1
+	# 							logCounter += 1
+	# 							if logInterval is not None and logCounter == logInterval:
+	# 								logCounter = 0
+	# 								print(f"{moveCounter}: {self._getMovesRepr(moves)}")
+	#
+	# 							continue
+	#
+	# 					# Else: undo move
+	# 					deadBoxes = self._undoMove(move, deadBoxes)
+	#
+	# 		else:
+	# 			# Success!
+	# 			self._winMoves = tuple(Move(move.type_, move.dir_) for move in moves)
+	# 			self._solvable = True
+	#
+	# 			if not optimal:
+	# 				return
+	#
+	# 			# There is no sense to undo only one move, at least two
+	# 			if len(moves) < 2:
+	# 				return
+	#
+	# 			lastMove = moves.pop()
+	# 			deadBoxes = self._undoMove(lastMove, deadBoxes)
+	# 			lastMove = moves.pop()
+	# 			deadBoxes = self._undoMove(lastMove, deadBoxes)
+	# 			nextDir = lastMove.dir_
+	#
+	# 		# Find next dir
+	# 		nextDir = MoveDir.getNext(nextDir)
+	# 		while nextDir is None:
+	# 			if not len(moves):
+	# 				return
+	#
+	# 			# Undo move
+	# 			lastMove = moves.pop()
+	# 			deadBoxes = self._undoMove(lastMove, deadBoxes)
+	# 			nextDir = MoveDir.getNext(lastMove.dir_)
+
+	def _findWinMoves(self, checkedFields, endFieldFingerPrint):
+		pass
 
 	def showSolution(self, delay=1.0):
 		if self._solvable is None:
@@ -481,3 +569,17 @@ class Field:
 
 	def getTotalWinMoves(self):
 		return None if self._winMoves is None else len(self._winMoves)
+
+
+if __name__ == "__main__":
+	field = Field(5, [
+		Cell.goal(),  Cell.empty(), Cell.empty(),  Cell.empty(), Cell.goal(),
+		Cell.empty(), Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
+		Cell.box(), Cell.box(),   Cell.empty(), Cell.box(),   Cell.empty(),
+		Cell.goal(),  Cell.box(),   Cell.empty(),    Cell.runner(),   Cell.box(),
+		Cell.empty(), Cell.goal(),  Cell.box(),  Cell.goal(),  Cell.empty()
+	])
+
+	field.show()
+	print()
+	field._analyze()

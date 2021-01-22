@@ -71,5 +71,5 @@ class BoxMove:
 
 
 if __name__ == "__main__":
-	bm = BoxMove(0, MoveDir.DEFAULT)
-	print(bm.__sizeof__())
+	for moveDir in MoveDir:
+		print(moveDir)
