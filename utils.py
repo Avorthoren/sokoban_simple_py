@@ -3,22 +3,7 @@ from typing import Generator
 
 
 def idGenerator(start=1) -> Generator[int, None, None]:
-	"""Generate consecutive ids.
-
-	Generator function. Generates consecutive ints starting from `start`
-	Usage example:
-	>>> id_ = idGenerator()
-	>>> next(id_)
-	1
-	>>> next(id_)
-	2
-
-	Args:
-	start - int, starting id
-
-	Return:
-	generator which yields int
-	"""
+	"""Generate consecutive ids."""
 	id_ = start
 	while True:
 		yield id_

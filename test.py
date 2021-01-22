@@ -11,6 +11,20 @@ def f(
 	print(b)
 
 
+class Test:
+	def __init__(self):
+		self.a = 1
+
+	def rawCopy(self):
+		cls = self.__class__
+		copy_ = cls.__new__(cls)
+
+		return copy_
+
+
 if __name__ == "__main__":
-	f(1)
-	f(2, ["temp", 2])
+	t = Test()
+	print(t.a)
+	tc = t.rawCopy()
+	tc.a = 2
+	print(tc.a)

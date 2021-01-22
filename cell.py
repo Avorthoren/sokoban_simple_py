@@ -47,8 +47,23 @@ class Cell:
 	def copy(self) -> Cell:
 		return self.__copy__()
 
+	def isGoal(self) -> bool:
+		return self.type_ == CellType.GOAL
+
+	def isRegular(self) -> bool:
+		return self.type_ == CellType.REGULAR
+
+	def isWall(self) -> bool:
+		return self.type_ == CellType.WALL
+
+	def hasBox(self) -> bool:
+		return self.state == CellState.BOX
+
+	def hasRunner(self) -> bool:
+		return self.state == CellState.RUNNER
+
 	def isPassable(self) -> bool:
-		return self.type_ != CellType.WALL and self.state != CellState.BOX
+		return not (self.isWall() or self.hasBox())
 
 	@classmethod
 	def empty(cls) -> Cell:
