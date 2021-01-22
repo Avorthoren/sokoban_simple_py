@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from typing import Generator
 
-def idGenerator(start=1):
+
+def idGenerator(start=1) -> Generator[int, None, None]:
 	"""Generate consecutive ids.
 
 	Generator function. Generates consecutive ints starting from `start`
@@ -29,7 +31,7 @@ class MaxLenDict(dict):
 		self._maxLen = len(self)
 
 	@property
-	def maxLen(self):
+	def maxLen(self) -> int:
 		return self._maxLen
 
 	def __setitem__(self, *args, **kwargs):

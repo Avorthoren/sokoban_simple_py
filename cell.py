@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+from __future__ import annotations
 from enum import Enum, auto
 
 
@@ -16,7 +16,7 @@ class CellState(Enum):
 
 
 class Cell:
-	def __init__(self, type_, state):
+	def __init__(self, type_: CellType, state: CellState):
 		if type_ == CellType.WALL and state != CellState.EMPTY:
 			raise ValueError(f"{CellType.WALL.name} must be {CellState.EMPTY.name}")
 
@@ -44,38 +44,38 @@ class Cell:
 
 		return copy_
 
-	def copy(self):
+	def copy(self) -> Cell:
 		return self.__copy__()
 
-	def isPassable(self):
+	def isPassable(self) -> bool:
 		return self.type_ != CellType.WALL and self.state != CellState.BOX
 
 	@classmethod
-	def empty(cls):
+	def empty(cls) -> Cell:
 		return cls(CellType.REGULAR, CellState.EMPTY)
 
 	@classmethod
-	def wall(cls):
+	def wall(cls) -> Cell:
 		return cls(CellType.WALL, CellState.EMPTY)
 
 	@classmethod
-	def goal(cls):
+	def goal(cls) -> Cell:
 		return cls(CellType.GOAL, CellState.EMPTY)
 
 	@classmethod
-	def box(cls):
+	def box(cls) -> Cell:
 		return cls(CellType.REGULAR, CellState.BOX)
 
 	@classmethod
-	def runner(cls):
+	def runner(cls) -> Cell:
 		return cls(CellType.REGULAR, CellState.RUNNER)
 
 	@classmethod
-	def boxOnGoal(cls):
+	def boxOnGoal(cls) -> Cell:
 		return cls(CellType.GOAL, CellState.BOX)
 
 	@classmethod
-	def runnerOnGoal(cls):
+	def runnerOnGoal(cls) -> Cell:
 		return cls(CellType.GOAL, CellState.RUNNER)
 
 	def __str__(self):

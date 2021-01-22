@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-
+from __future__ import annotations
 from enum import Enum, auto
+from typing import Union, Sequence
 
 
 class MoveType(Enum):
@@ -16,7 +17,7 @@ class MoveDir(Enum):
 	DEFAULT = RIGHT
 
 	@classmethod
-	def getNext(cls, dir_):
+	def getNext(cls, dir_: MoveDir) -> Union[MoveDir, None]:
 		if dir_ == cls.RIGHT:
 			return cls.UP
 		elif dir_ == cls.UP:
@@ -27,7 +28,7 @@ class MoveDir(Enum):
 			return None
 
 	@classmethod
-	def getOpposite(cls, dir_):
+	def getOpposite(cls, dir_: MoveDir) -> MoveDir:
 		if dir_ == cls.RIGHT:
 			return cls.LEFT
 		elif dir_ == cls.UP:
@@ -42,7 +43,12 @@ class MoveDir(Enum):
 
 
 class Move:
-	def __init__(self, type_, dir_, savedDeadBoxes=None):
+	def __init__(
+		self,
+		type_: MoveType,
+		dir_: MoveDir,
+		savedDeadBoxes: Union[None, Sequence[int]] = None
+	):
 		self.type_ = type_
 		self.dir_ = dir_
 		self.savedDeadBoxes = savedDeadBoxes
@@ -53,7 +59,7 @@ class Move:
 
 
 class BoxMove:
-	def __init__(self, startCellIndex, dir_):
+	def __init__(self, startCellIndex: int, dir_: MoveDir):
 		self.startCellIndex = startCellIndex
 		self.dir_ = dir_
 
@@ -72,4 +78,4 @@ class BoxMove:
 
 if __name__ == "__main__":
 	for moveDir in MoveDir:
-		print(moveDir)
+		print(int(moveDir.value))
