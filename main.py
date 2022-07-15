@@ -25,14 +25,14 @@ if __name__ == "__main__":
 	# 	Cell.runner(), Cell.goal(),  Cell.empty(),     Cell.empty(),     Cell.empty(),     Cell.empty()
 	# ])
 
-	field_ = Field(6, [
-		Cell.empty(),  Cell.empty(), Cell.empty(), Cell.empty(),     Cell.goal(),  Cell.empty(),
-		Cell.runner(), Cell.empty(), Cell.empty(), Cell.wall(),      Cell.wall(),  Cell.empty(),
-		Cell.empty(),  Cell.empty(), Cell.empty(), Cell.boxOnGoal(), Cell.empty(), Cell.empty(),
-		Cell.goal(),   Cell.box(),   Cell.empty(), Cell.box(),       Cell.empty(), Cell.empty(),
-		Cell.box(),    Cell.box(),   Cell.box(),   Cell.box(),       Cell.goal(),  Cell.empty(),
-		Cell.goal(),   Cell.goal(),  Cell.goal(),  Cell.empty(),     Cell.empty(), Cell.empty()
-	])
+	# field_ = Field(6, [
+	# 	Cell.empty(),  Cell.empty(), Cell.empty(), Cell.empty(),     Cell.goal(),  Cell.empty(),
+	# 	Cell.runner(), Cell.empty(), Cell.empty(), Cell.wall(),      Cell.wall(),  Cell.empty(),
+	# 	Cell.empty(),  Cell.empty(), Cell.empty(), Cell.boxOnGoal(), Cell.empty(), Cell.empty(),
+	# 	Cell.goal(),   Cell.box(),   Cell.empty(), Cell.box(),       Cell.empty(), Cell.empty(),
+	# 	Cell.box(),    Cell.box(),   Cell.box(),   Cell.box(),       Cell.goal(),  Cell.empty(),
+	# 	Cell.goal(),   Cell.goal(),  Cell.goal(),  Cell.empty(),     Cell.empty(), Cell.empty()
+	# ])
 
 	# field_ = Field(5, [
 	# 	Cell.empty(),  Cell.empty(), Cell.empty(),     Cell.goal(),  Cell.empty(),
@@ -57,6 +57,41 @@ if __name__ == "__main__":
 	# 	Cell.goal(),  Cell.box(),   Cell.box(),    Cell.box(),   Cell.goal(),
 	# 	Cell.empty(), Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
 	# ])
+
+	# field_ = Field(5, [
+	# 	Cell.goal(),      Cell.empty(),     Cell.empty(),  Cell.empty(), Cell.empty(),
+	# 	Cell.boxOnGoal(), Cell.wall(),      Cell.empty(),  Cell.empty(), Cell.empty(),
+	# 	Cell.goal(),      Cell.box(),       Cell.empty(),  Cell.box(),   Cell.empty(),
+	# 	Cell.goal(),      Cell.boxOnGoal(), Cell.box(),    Cell.box(),   Cell.empty(),
+	# 	Cell.goal(),      Cell.wall(),      Cell.runner(), Cell.empty(), Cell.empty()
+	# ])
+
+	# field_ = Field(6, [
+	# 	Cell.wall(),  Cell.wall(),  Cell.empty(),        Cell.empty(),     Cell.wall(),  Cell.wall(),
+	# 	Cell.wall(),  Cell.wall(),  Cell.empty(),        Cell.box(),       Cell.wall(),  Cell.wall(),
+	# 	Cell.wall(),  Cell.empty(), Cell.runnerOnGoal(), Cell.boxOnGoal(), Cell.goal(),  Cell.empty(),
+	# 	Cell.empty(), Cell.empty(), Cell.empty(),        Cell.box(),       Cell.empty(), Cell.empty(),
+	# 	Cell.empty(), Cell.empty(), Cell.wall(),         Cell.empty(),     Cell.wall(),  Cell.wall(),
+	# 	Cell.empty(), Cell.empty(), Cell.empty(),        Cell.empty(),     Cell.wall(),  Cell.wall(),
+	# ])
+
+	# >>>>>>>>> BUG <<<<<<<<<<
+	# field_ = Field(4, [
+	# 	Cell.wall(),  Cell.empty(), Cell.empty(), Cell.wall(),
+	# 	Cell.goal(),  Cell.empty(), Cell.box(),   Cell.wall(),
+	# 	Cell.goal(),  Cell.box(),   Cell.empty(), Cell.wall(),
+	# 	Cell.goal(),  Cell.box(),   Cell.empty(), Cell.wall(),
+	# 	Cell.goal(),  Cell.box(),   Cell.empty(), Cell.wall(),
+	# 	Cell.goal(),  Cell.empty(), Cell.box(),   Cell.wall(),
+	# 	Cell.empty(), Cell.empty(), Cell.empty(), Cell.runner(),
+	# 	Cell.wall(),  Cell.empty(), Cell.empty(), Cell.empty(),
+	# ])
+
+	field_ = Field(13, [
+		Cell.empty(), Cell.empty(), Cell.wall(),  Cell.wall(), Cell.wall(),  Cell.wall(), Cell.wall(),  Cell.wall(),  Cell.wall(),  Cell.wall(),  Cell.wall(),  Cell.wall(),   Cell.wall(),
+		Cell.empty(), Cell.box(),   Cell.empty(), Cell.box(),  Cell.empty(), Cell.box(),  Cell.empty(), Cell.box(),   Cell.empty(), Cell.box(),   Cell.empty(), Cell.runner(), Cell.empty(),
+		Cell.empty(), Cell.goal(),  Cell.goal(),  Cell.goal(), Cell.goal(),  Cell.goal(), Cell.empty(), Cell.empty(), Cell.empty(), Cell.empty(), Cell.empty(), Cell.empty(),  Cell.empty(),
+	])
 
 	field_.show()
 	print()
