@@ -85,7 +85,7 @@ def main():
 		Cell.empty(), Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
 	])
 
-	solve(field, optimal=True, logInterval=1000_000)
+	solve(field, optimal=False, logInterval=1000_000)
 
 	# field.showAnimation(moves="RDulLUlDrDRRuULuRlL", delay=0.3)
 
