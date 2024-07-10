@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+Main file.
+Shell-'executable'.
+Recommended python 3.12.4.
+"""
 
 import time
 
@@ -6,7 +11,7 @@ from cell import Cell
 from field import Field
 
 
-if __name__ == "__main__":
+def main():
 	# field = Field(5, [
 	# 	Cell.wall(),   Cell.wall(),  Cell.empty(), Cell.empty(), Cell.wall(),
 	# 	Cell.empty(),  Cell.empty(), Cell.box(),   Cell.empty(), Cell.wall(),
@@ -47,8 +52,16 @@ if __name__ == "__main__":
 		Cell.empty(), Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
 		Cell.empty(), Cell.box(),   Cell.runner(), Cell.box(),   Cell.empty(),
 		Cell.goal(),  Cell.box(),   Cell.box(),    Cell.box(),   Cell.goal(),
-		Cell.empty(),  Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
+		Cell.empty(), Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
 	])
+
+	# field = Field(5, [
+	# 	Cell.empty(),  Cell.empty(), Cell.empty(),  Cell.empty(), Cell.empty(),
+	# 	Cell.empty(), Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
+	# 	Cell.empty(), Cell.box(),   Cell.runner(), Cell.box(),   Cell.goal(),
+	# 	Cell.empty(),  Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
+	# 	Cell.empty(), Cell.empty(),  Cell.empty(),  Cell.goal(),  Cell.empty()
+	# ])
 
 	field.show()
 	print()
@@ -57,7 +70,7 @@ if __name__ == "__main__":
 	print("Processing, wait...")
 
 	t0 = time.time()
-	if field.solve(logInterval=100000):
+	if field.solve(optimal=True, logInterval=1):
 		print()
 		print(f"Checked in {time.time() - t0:.2f} seconds")
 		print(f"Solution with {field.getTotalWinMoves()} total moves found. Show? y/n")
@@ -70,5 +83,11 @@ if __name__ == "__main__":
 			field.showSolution(delay=0.3)
 	else:
 		print()
-		print(f"Checked in {time.time() - t0} seconds")
+		print(f"Checked in {time.time() - t0:.2f} seconds")
 		print("There is no solution :(")
+
+	# field.showAnimation(moves="RDulLUlDrDRRuULuRlL", delay=0.3)
+
+
+if __name__ == "__main__":
+	main()

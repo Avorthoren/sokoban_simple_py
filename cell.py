@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from enum import Enum, auto
+from typing import Self
 
 
 class CellType(Enum):
@@ -16,14 +17,18 @@ class CellState(Enum):
 
 
 class Cell:
-	def __init__(self, type_, state):
+	"""Sokoban board cell class."""
+	__slots__ = 'type_', 'state'
+
+	def __init__(self, type_: CellType, state: CellState):
 		if type_ == CellType.WALL and state != CellState.EMPTY:
 			raise ValueError(f"{CellType.WALL.name} must be {CellState.EMPTY.name}")
 
 		self.type_ = type_
 		self.state = state
 
-	def getFingerprint(self):
+	def getFingerprint(self) -> int:
+		"""Kinda like hash of the cell."""
 		if self.type_ == CellType.WALL:
 			return 1
 		elif self.state == CellState.EMPTY:
@@ -33,40 +38,41 @@ class Cell:
 		elif self.state == CellState.RUNNER:
 			return 7 if self.type_ == CellType.GOAL else 6
 		else:
+			# Should never happen.
 			return 0
 
-	def isPassable(self):
+	def isPassable(self) -> bool:
 		return self.type_ != CellType.WALL and self.state != CellState.BOX
 
 	@classmethod
-	def empty(cls):
+	def empty(cls) -> Self:
 		return cls(CellType.REGULAR, CellState.EMPTY)
 
 	@classmethod
-	def wall(cls):
+	def wall(cls) -> Self:
 		return cls(CellType.WALL, CellState.EMPTY)
 
 	@classmethod
-	def goal(cls):
+	def goal(cls) -> Self:
 		return cls(CellType.GOAL, CellState.EMPTY)
 
 	@classmethod
-	def box(cls):
+	def box(cls) -> Self:
 		return cls(CellType.REGULAR, CellState.BOX)
 
 	@classmethod
-	def runner(cls):
+	def runner(cls) -> Self:
 		return cls(CellType.REGULAR, CellState.RUNNER)
 
 	@classmethod
-	def boxOnGoal(cls):
+	def boxOnGoal(cls) -> Self:
 		return cls(CellType.GOAL, CellState.BOX)
 
 	@classmethod
-	def runnerOnGoal(cls):
+	def runnerOnGoal(cls) -> Self:
 		return cls(CellType.GOAL, CellState.RUNNER)
 
-	def __str__(self):
+	def __str__(self) -> str:
 		if self.type_ == CellType.WALL:
 			return "x"
 		elif self.state == CellState.EMPTY:
