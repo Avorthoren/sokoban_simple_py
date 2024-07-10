@@ -6,9 +6,39 @@ Recommended python 3.12.4.
 """
 
 import time
+from typing import Optional
 
 from cell import Cell
 from field import Field
+
+
+def solve(field: Field, optimal: bool = False, logInterval: Optional[int] = None):
+	"""Solve the puzzle. Interactively ask user to show solution.
+
+	For args description check `Field.solve`.
+	"""
+	field.show()
+	print()
+	# print(f"{'Dead' if field.isDead() else 'Alive'}")
+	# field.showWithDeadBoxes()
+	print("Processing, wait...")
+
+	t0 = time.time()
+	if field.solve(optimal, logInterval):
+		print()
+		print(f"Checked in {time.time() - t0:.2f} seconds")
+		print(f"Solution with {field.getTotalWinMoves()} total moves found. Show? y/n")
+		answer = input()
+		if answer == "y":
+			print(field.getWinMovesRepr())
+		print()
+		answer = input("Show animation? y/n\n")
+		if answer == "y":
+			field.showSolution(delay=0.3)
+	else:
+		print()
+		print(f"Checked in {time.time() - t0:.2f} seconds")
+		print("There is no solution :(")
 
 
 def main():
@@ -55,36 +85,7 @@ def main():
 		Cell.empty(), Cell.goal(),  Cell.empty(),  Cell.goal(),  Cell.empty()
 	])
 
-	# field = Field(5, [
-	# 	Cell.empty(),  Cell.empty(), Cell.empty(),  Cell.empty(), Cell.empty(),
-	# 	Cell.empty(), Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
-	# 	Cell.empty(), Cell.box(),   Cell.runner(), Cell.box(),   Cell.goal(),
-	# 	Cell.empty(),  Cell.box(),   Cell.box(),    Cell.box(),   Cell.empty(),
-	# 	Cell.empty(), Cell.empty(),  Cell.empty(),  Cell.goal(),  Cell.empty()
-	# ])
-
-	field.show()
-	print()
-	# print(f"{'Dead' if field.isDead() else 'Alive'}")
-	# field.showWithDeadBoxes()
-	print("Processing, wait...")
-
-	t0 = time.time()
-	if field.solve(optimal=True, logInterval=1):
-		print()
-		print(f"Checked in {time.time() - t0:.2f} seconds")
-		print(f"Solution with {field.getTotalWinMoves()} total moves found. Show? y/n")
-		answer = input()
-		if answer == "y":
-			print(field.getWinMovesRepr())
-		print()
-		answer = input("Show animation? y/n\n")
-		if answer == "y":
-			field.showSolution(delay=0.3)
-	else:
-		print()
-		print(f"Checked in {time.time() - t0:.2f} seconds")
-		print("There is no solution :(")
+	solve(field, optimal=True, logInterval=1000_000)
 
 	# field.showAnimation(moves="RDulLUlDrDRRuULuRlL", delay=0.3)
 

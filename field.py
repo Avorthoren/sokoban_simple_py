@@ -374,7 +374,7 @@ class Field:
 			return
 
 		moves: list[Move] = []
-		nextDir: None | MoveDir = None
+		nextDir: None | MoveDir = None  # will be RIGHT on the first iteration
 		deadCells = self._getDeadCells()
 
 		# Start solving
@@ -387,6 +387,7 @@ class Field:
 			nextDir = MoveDir.getNext(nextDir)
 			while nextDir is None:
 				if not len(moves):
+					# All possible first moves checked.
 					return
 				# Undo move
 				lastMove = moves.pop()
@@ -397,73 +398,29 @@ class Field:
 			if self._unachievedGoals:
 				# Try move.
 				targetCellIndex = self.getTargetCellIndex(self._runnerPos, nextDir)
-				# Not edge of the field
-				if targetCellIndex is not None:
-					targetCell = self._cells[targetCellIndex]
-					isPassable = targetCell.isPassable()
-					followCellIndex = self.getTargetCellIndex(targetCellIndex, nextDir)
-					# Either passable cell, or box followed by passable cell
-					# and non-dead cell
-					if (
-						isPassable
-						or targetCell.state == CellState.BOX
-						and followCellIndex is not None
-						and self._cells[followCellIndex].isPassable()
-						and followCellIndex not in deadCells
-					):
-						# Do move
-						move = Move(MoveType.REGULAR if isPassable else MoveType.PUSH, nextDir)
-						targetCell.state = CellState.RUNNER
-						self._cells[self._runnerPos].state = CellState.EMPTY
-						if not isPassable:
-							self._cells[followCellIndex].state = CellState.BOX
-							if targetCell.type_ == CellType.GOAL:
-								self._unachievedGoals += 1
-							if self._cells[followCellIndex].type_ == CellType.GOAL:
-								self._unachievedGoals -= 1
+				# Edge of the field
+				if targetCellIndex is None:
+					continue
 
-						self._runnerPos = targetCellIndex
-
-						# We should not repeat field state unless we've achieved
-						# it from lower distance than previous time.
-						# TODO: optimal solution search must be reworked:
-						#  all fields fingerprints from previous found solution
-						#  should be stored somewhere. If we hit some of this
-						#  fields, _winMoves must be updated, then undo two
-						#  last moves.
-						fingerPrint = self.getFingerprint()
-						if (
-							fingerPrint not in checkedFields
-							or optimal
-							and checkedFields[fingerPrint] > len(moves) + 1
-						):
-							checkedFields[fingerPrint] = len(moves)
-							isDead = False
-							if move.type_ == MoveType.PUSH:
-								move.savedDeadBoxes = deadBoxes.copy()
-								isDead = self.isDead(deadBoxes)
-
-							if not isDead:
-								moves.append(move)
-								nextDir = MoveDir.DEFAULT
-
-								moveCounter += 1
-								logCounter += 1
-								if logInterval is not None and logCounter == logInterval:
-									logCounter = 0
-									print(f"{moveCounter:_}: {self._getMovesRepr(moves)}")
-
-								continue
-
-						# Else: undo move
-						deadBoxes = self._undoMove(move, deadBoxes)
-
+				nextDir, deadBoxes, moveCounter, logCounter = self._checkStep(
+					targetCellIndex,
+					nextDir,
+					deadCells,
+					checkedFields,
+					moves,
+					deadBoxes,
+					optimal,
+					logInterval,
+					moveCounter,
+					logCounter
+				)
 			else:
 				# SUCCESS!
 				result = self._handleSuccess(moves, deadBoxes, optimal, logInterval)
 				# Check explicitly for `True`, because otherwise it will be
 				# a tuple, which is also will be casted to True.
 				if result is True:
+					# Either nothing else to check, or `optimal is False`.
 					return
 				lastMove, deadBoxes, nextDir = result
 
@@ -479,7 +436,12 @@ class Field:
 		logInterval: int | None,
 		moveCounter: int,
 		logCounter: int
-	) -> None | tuple[MoveDir, set[int], int, int]:
+	) -> tuple[
+		MoveDir | None,
+		set[int],
+		int,
+		int
+	]:
 		"""Main part of `self._solve`: check for args description.
 
 		Tries to move runner to `targetCellIndex`, checks if it makes sense
@@ -503,7 +465,8 @@ class Field:
 			and self._cells[followCellIndex].isPassable()
 			and followCellIndex not in deadCells
 		):
-			return None
+			# Nothing was updated, actually.
+			return nextDir, deadBoxes, moveCounter, logCounter
 
 		# Do move
 		move = Move(MoveType.REGULAR if isPassable else MoveType.PUSH, nextDir)
@@ -540,7 +503,7 @@ class Field:
 			if not isDead:
 				# 'Positive' case: add new move.
 				moves.append(move)
-				nextDir = MoveDir.DEFAULT
+				nextDir = None  # will be RIGHT on next iteration in _solve
 
 				moveCounter += 1
 				logCounter += 1
@@ -602,10 +565,10 @@ class Field:
 		# delay will be 2 seconds longer.
 		delay: float = 1.0
 	) -> None:
-		"""Show animation by given list of moves directions.
+		"""Show console 'animation' by given list of moves.
 		You can pass moves in string format. Example:
-		'ruuudlr'
-		It means: right, up, up, up, down, left, right
+		'RuuUldD'
+		It means: push-right, up, up, push-up, left, down, push-down
 		"""
 		if isinstance(moves, str):
 			movesRepr = moves
@@ -649,6 +612,7 @@ class Field:
 		self._unachievedGoals = unachievedGoals
 
 	def showSolution(self, delay: float = 1.0):
+		"""Show console 'animation' of puzzle solution."""
 		if self._solvable is None:
 			self.solve()
 
